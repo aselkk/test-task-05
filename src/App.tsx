@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { FormView } from "./components/FormView";
+import { BrowserRouter, Route, Routes, Link } from 'react-router-dom';
+import { Inputs } from "./components/Inputs";
 import { getDatabase, ref, child, get } from "firebase/database";
+import { DataDisplay } from "./components/DataDisplay";
+import { UserData } from "./types";
+import { Main } from "./Main";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDwHN6nc1sE-3s4ayo6kVTwp45P32Aumks",
@@ -13,13 +17,12 @@ const firebaseConfig = {
   appId: "1:381359981691:web:287327e68dbe44ff128ede",
   measurementId: "G-JXYGNWR5JV"
 };
-
 const app = initializeApp(firebaseConfig);
 
 function App() {
-  const [userData, setUserdata] = useState<any>()
+  const [userData, setUserdata] = useState<UserData>()
 
-  useEffect(() => {
+  const getUserData = () => {
     const dbRef = ref(getDatabase());
     get(child(dbRef, `userData`))
     .then((snapshot) => {
@@ -33,12 +36,20 @@ function App() {
     .catch((error) => {
       console.error(error);
     });
+  }
+
+  useEffect(() => {
+    getUserData()
   }, []);
 
   return (
-    <div className="App">
-      <FormView userData={userData?.values}/>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path='/' element={<Main/>} />
+        <Route path='/form' element={<Inputs getUserData={getUserData} userData={userData?.values}/>} />
+        <Route path='/data' element={<DataDisplay  getUserData={getUserData} userData={userData?.values}/>} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

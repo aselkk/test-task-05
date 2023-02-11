@@ -1,18 +1,45 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { getDatabase, ref, child, get } from "firebase/database";
 import CheckboxTree from 'react-checkbox-tree';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCheckSquare, faCoffee, faSquare } from '@fortawesome/free-solid-svg-icons'
-import { getDatabase, ref, child, get } from "firebase/database";
+import { faCheckSquare, faSquare, faChevronRight, faChevronDown, faMinusSquare } from '@fortawesome/free-solid-svg-icons'
+import { CheckboxesProps } from '../types';
 
-export const Checkboxes = ({values, checked, setChecked}: {values:any, checked:any, setChecked:any}) => {
-  const [expanded, setExpand] = useState();
+export const Checkboxes = React.memo(({values, checked, setChecked}: CheckboxesProps) => {
+  const [expanded, setExpand] = useState<string[]>();
   const [nodes, setNodes] = useState([])
-  const onCheck = (checked:any) => {
-    setChecked(checked)
-    values.sectors = [...checked]
-  };
+  const icons = useMemo(() => ({
+    check: <FontAwesomeIcon icon={faCheckSquare} />,
+    uncheck: <FontAwesomeIcon icon={faSquare} />,
+    halfCheck: <FontAwesomeIcon icon={faMinusSquare} />,
+    expandClose:  <FontAwesomeIcon icon={faChevronRight} />,
+    expandOpen:  <FontAwesomeIcon icon={faChevronDown} />,
+  }), []);  
 
-  const onExpand = (expanded:any) => setExpand(expanded);
+  const getExpandedNodes = (nodes:any):string[] => {
+    return nodes.reduce((acc:string[], ite:any) => {
+      if (ite.children?.length) {
+        acc.push(ite.value);
+        acc.push(...getExpandedNodes(ite.children))
+      }
+      return acc;
+    }, [])
+  };
+  
+  const makeExpanded = useMemo(() => {
+    //@ts-ignore
+    const expandedNodes = getExpandedNodes(nodes);
+    setExpand(expandedNodes);
+    return nodes;
+  }, [nodes]);
+
+  const onCheck = (checked:string[]) => {
+    setChecked(checked)
+    if(values){
+      values.sectors = [...checked]
+    } 
+  };
+  const onExpand = (expanded: string[]) => setExpand(expanded);
   
   useEffect(() => {
     const dbRef = ref(getDatabase());
@@ -20,7 +47,6 @@ export const Checkboxes = ({values, checked, setChecked}: {values:any, checked:a
     .then((snapshot) => {
       if (snapshot.exists()) {
         setNodes(snapshot.val())
-        console.log(snapshot.val());
       } else {
         console.log("No data available");
       }
@@ -29,51 +55,18 @@ export const Checkboxes = ({values, checked, setChecked}: {values:any, checked:a
       console.error(error);
     });
   }, []);
-    // async function getSectors() {
-    //   let data;
-    //   const dbRef = ref(getDatabase());
-    //   try {
-    //     const snapshot = await get(child(dbRef, `sectors`));
-    //     if (snapshot.exists()) {
-    //       data = snapshot.val();
-    //     } else {
-    //       console.log("No data available");
-    //     }
-    //   } catch (error) {
-    //     console.error(error);
-    //   }
-    //   return data;
-    // }
-    // getSectors()
-    // .then((data) => {
-    //   setNodes(data);
-    // });
 
   return (
     <div>
       <CheckboxTree
-        name='sectorsI'
-        showExpandAll={true}
-        nativeCheckboxes={true}
         showNodeIcon={false}
         checked={checked}
         expanded={expanded}
-        icons={{
-          check: <FontAwesomeIcon icon={faCheckSquare} />,
-          uncheck: <FontAwesomeIcon icon={faSquare} />,
-          halfCheck: <FontAwesomeIcon icon={faCoffee} />,
-          expandClose:  <FontAwesomeIcon icon={faCoffee} />,
-          expandOpen:  <FontAwesomeIcon icon={faCoffee} />,
-          expandAll:  <FontAwesomeIcon icon={faCoffee} />,
-          collapseAll:  <FontAwesomeIcon icon={faCoffee} />,
-          parentClose: <FontAwesomeIcon icon={faCoffee} />,
-          parentOpen:  <FontAwesomeIcon icon={faCoffee} />,
-          leaf:  <FontAwesomeIcon icon={faCoffee} />
-        }}  
+        icons={icons}
         nodes={nodes}
         onCheck={onCheck}
         onExpand={onExpand}
       />
     </div>
   );
-};
+});
